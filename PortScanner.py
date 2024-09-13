@@ -5,6 +5,8 @@ from queue import Queue
 from tqdm import tqdm
 import argparse
 from colorama import Fore, Style, init
+import signal
+import sys
 
 init(autoreset=True)
 
@@ -35,17 +37,35 @@ def portscan(port, target):
             all_ports_status.append((port, f"{Fore.RED}Error accessing port {port}: {url}, {e}"))
 
 # Thread function
-def threader(target, progress_bar):
+def threader(target):
     while True:
         worker = queue.get()
         portscan(worker, target)
         queue.task_done()
-        # Update the progress bar with the current port being scanned
-        progress_bar.update(1)
-        progress_bar.set_description(f"Scanning Port {worker}")
+
+# Function to show the summary of the scan
+def show_summary():
+    if valid_endpoints:
+        print("\nValid HTTP Endpoints (200 OK):")
+        for port, endpoint in valid_endpoints:
+            print(f"[200 OK] {endpoint}")
+    else:
+        print("\nNo valid HTTP endpoints found.")
+
+    print("\nPort Scan Results:")
+    for port, status in all_ports_status:
+        print(status)
+
+# Signal handler to display the summary when Ctrl+C is pressed
+def signal_handler(sig, frame):
+    print("\n\n[!] Scan interrupted by user.")
+    show_summary()
+    sys.exit(0)
 
 # Main function to initialize the scanner
 def main():
+    signal.signal(signal.SIGINT, signal_handler)  # Handle Ctrl+C to show summary
+    
     parser = argparse.ArgumentParser(description="HTTP-based port scanner with logging")
     parser.add_argument("target", help="Target IP address or domain to scan (e.g., 'example.com' or '127.0.0.1')")
     parser.add_argument("--start-port", type=int, default=1, help="Start port number (default is 1)")
@@ -61,38 +81,26 @@ def main():
         print(f"{Fore.RED}Could not resolve domain: {target}")
         return
 
-    # Progress bar setup
-    total_ports = args.end_port - args.start_port + 1
-    progress_bar = tqdm(total=total_ports, ncols=80, bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} ({rate_fmt})')
-
-    # Create thread pool (increase threads for faster scan)
+    # Create thread pool
     for x in range(500):
-        t = threading.Thread(target=threader, args=(target, progress_bar))
+        t = threading.Thread(target=threader, args=(target,))
         t.daemon = True
         t.start()
 
-    print(f"Scanning all HTTP ports ({args.start_port}-{args.end_port}) on {target}...")
-    for worker in range(args.start_port, args.end_port + 1):
+    print(f"Scanning HTTP ports ({args.start-port}-{args.end-port}) on {target}...")
+
+    # Customize progress bar to show the current port being checked along with the range
+    total_ports = args.end_port - args.start_port + 1
+    for worker in tqdm(range(args.start_port, args.end_port + 1), 
+                       desc=f"Scanning ports {args.start_port}-{args.end_port}", 
+                       ncols=80, 
+                       bar_format=f'Scanning Port {{n_fmt}}/({args.start_port}-{args.end_port}) | {{percentage:3.0f}}%'):
         queue.put(worker)
 
     queue.join()
-    progress_bar.close()
 
-    # Sort ports by their number to ensure correct order
-    all_ports_status.sort(key=lambda x: x[0])
-
-    # Display valid HTTP endpoints
-    if valid_endpoints:
-        print("\nValid HTTP Endpoints (200 OK):")
-        for port, endpoint in valid_endpoints:
-            print(f"[200 OK] {endpoint}")
-    else:
-        print("\nNo valid HTTP endpoints found.")
-    
-    # Display all scanned port statuses
-    print("\nPort Scan Results:")
-    for port, status in all_ports_status:
-        print(status)
+    # Show summary when scan is done
+    show_summary()
 
 if __name__ == "__main__":
     main()
