@@ -78,3 +78,8 @@ Valid HTTP Endpoints (200 OK):
 - You can adjust the range of ports depending on what you need.
 - The tool is simple and useful for checking if certain web ports are open.
 
+## Licensing
+
+[![MIT License](https://img.shields.io/badge/license-MIT_License-blue)](https://opensource.org/licenses/MIT)
+
+<sup>NOTE: Downloading this repository may trigger a false-positive alert from your anti-virus or anti-malware software. You can whitelist the filepath if necessary. This repository is safe to use and can be used free of charge. However, it is not recommended to store these files on critical systems, as they could pose a risk of local file inclusion attacks if improperly handled.</sup>
