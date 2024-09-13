@@ -5,12 +5,13 @@ from tqdm import tqdm
 import argparse
 from colorama import Fore, Style, init
 
-init(autoreset=True)  # To reset colors after each print
+init(autoreset=True)
 
 # Global variables
 print_lock = threading.Lock()
 queue = Queue()
 valid_endpoints = []
+all_ports_status = []
 
 # Function to check the HTTP response on a given port
 def portscan(port, target):
@@ -18,21 +19,19 @@ def portscan(port, target):
         url = f"http://{target}:{port}"
         response = requests.get(url, timeout=2)  # Timeout of 2 seconds for each request
         
-        # Logging for each response, even if it's not 200 OK
-        with print_lock:
-            if response.status_code == 200:
-                valid_endpoints.append(url)
-                print(f"{Fore.GREEN}[200 OK] Found: {url}")
-            else:
-                print(f"{Fore.YELLOW}[{response.status_code}] {url}")
+        # Collect results in the correct order
+        if response.status_code == 200:
+            with print_lock:
+                valid_endpoints.append((port, url))
+        else:
+            with print_lock:
+                all_ports_status.append((port, f"{Fore.YELLOW}[{response.status_code}] {url}"))
     except requests.ConnectionError:
-        # If the connection is refused or times out, log it (silently or explicitly)
         with print_lock:
-            print(f"{Fore.RED}Connection failed: {url}")
+            all_ports_status.append((port, f"{Fore.RED}Port {port} not open: {url}"))
     except Exception as e:
-        # Catch all other errors (including timeouts)
         with print_lock:
-            print(f"{Fore.RED}Error accessing {url}: {e}")
+            all_ports_status.append((port, f"{Fore.RED}Error accessing port {port}: {url}, {e}"))
 
 # Thread function
 def threader(target):
@@ -49,8 +48,8 @@ def main():
 
     target = args.target
 
-    # Create thread pool
-    for x in range(100):
+    # Create thread pool (increase threads for faster scan)
+    for x in range(500):
         t = threading.Thread(target=threader, args=(target,))
         t.daemon = True
         t.start()
@@ -61,13 +60,21 @@ def main():
 
     queue.join()
 
+    # Sort ports by their number to ensure correct order
+    all_ports_status.sort(key=lambda x: x[0])
+
     # Display valid HTTP endpoints
     if valid_endpoints:
         print("\nValid HTTP Endpoints (200 OK):")
-        for endpoint in valid_endpoints:
+        for port, endpoint in valid_endpoints:
             print(f"[200 OK] {endpoint}")
     else:
         print("\nNo valid HTTP endpoints found.")
+    
+    # Display all scanned port statuses
+    print("\nPort Scan Results:")
+    for port, status in all_ports_status:
+        print(status)
 
 if __name__ == "__main__":
     main()
