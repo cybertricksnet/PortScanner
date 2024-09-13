@@ -17,12 +17,12 @@ all_ports_status = []
 def portscan(port, target):
     try:
         url = f"http://{target}:{port}"
-        response = requests.get(url, timeout=2)  # Timeout of 2 seconds for each request
+        response = requests.get(url, timeout=1)  # Shorten timeout to 1 second for faster feedback
         
-        # Collect results in the correct order
         if response.status_code == 200:
             with print_lock:
                 valid_endpoints.append((port, url))
+                print(f"{Fore.GREEN}[200 OK] Found: {url}")
         else:
             with print_lock:
                 all_ports_status.append((port, f"{Fore.YELLOW}[{response.status_code}] {url}"))
@@ -44,9 +44,18 @@ def threader(target):
 def main():
     parser = argparse.ArgumentParser(description="HTTP-based port scanner with logging")
     parser.add_argument("target", help="Target IP address or domain to scan (e.g., 'example.com' or '127.0.0.1')")
+    parser.add_argument("--start-port", type=int, default=1, help="Start port number (default is 1)")
+    parser.add_argument("--end-port", type=int, default=65535, help="End port number (default is 65535)")
     args = parser.parse_args()
 
     target = args.target
+
+    # Test if the domain can be resolved
+    try:
+        socket.gethostbyname(target)
+    except socket.gaierror:
+        print(f"{Fore.RED}Could not resolve domain: {target}")
+        return
 
     # Create thread pool (increase threads for faster scan)
     for x in range(500):
@@ -54,8 +63,8 @@ def main():
         t.daemon = True
         t.start()
 
-    print(f"Scanning all HTTP ports (1-65535) on {target}...")
-    for worker in tqdm(range(1, 65535), desc="Scanning Ports", ncols=80, bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt}'):
+    print(f"Scanning all HTTP ports ({args.start_port}-{args.end_port}) on {target}...")
+    for worker in tqdm(range(args.start_port, args.end_port), desc="Scanning Ports", ncols=80, bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt}'):
         queue.put(worker)
 
     queue.join()
