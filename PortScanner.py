@@ -17,7 +17,7 @@ valid_endpoints = []
 def portscan(port, target):
     try:
         url = f"http://{target}:{port}"
-        response = requests.get(url, timeout=1)
+        response = requests.get(url, timeout=3)  # Slightly longer timeout for better detection
         
         if response.status_code == 200:
             with print_lock:
@@ -28,10 +28,13 @@ def portscan(port, target):
                 print(f"{Fore.RED}Port {port} not open: {url}")
     except requests.ConnectionError:
         with print_lock:
-            print(f"{Fore.RED}Port {port} not open: {url}")
-    except Exception:
+            print(f"{Fore.RED}Port {port} not open (Connection refused): {url}")
+    except requests.Timeout:
         with print_lock:
-            print(f"{Fore.RED}Port {port} not open: {url}")
+            print(f"{Fore.RED}Port {port} timed out (No response): {url}")
+    except Exception as e:
+        with print_lock:
+            print(f"{Fore.RED}Port {port} not open (Other error): {url} ({e})")
 
 def threader(target):
     while True:
