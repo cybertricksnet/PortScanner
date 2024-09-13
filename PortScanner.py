@@ -1,6 +1,6 @@
 import requests
 import threading
-import socket  # Import socket module
+import socket
 from queue import Queue
 from tqdm import tqdm
 import argparse
@@ -35,11 +35,14 @@ def portscan(port, target):
             all_ports_status.append((port, f"{Fore.RED}Error accessing port {port}: {url}, {e}"))
 
 # Thread function
-def threader(target):
+def threader(target, progress_bar):
     while True:
         worker = queue.get()
         portscan(worker, target)
         queue.task_done()
+        # Update the progress bar with the current port being scanned
+        progress_bar.update(1)
+        progress_bar.set_description(f"Scanning Port {worker}")
 
 # Main function to initialize the scanner
 def main():
@@ -58,17 +61,22 @@ def main():
         print(f"{Fore.RED}Could not resolve domain: {target}")
         return
 
+    # Progress bar setup
+    total_ports = args.end_port - args.start_port + 1
+    progress_bar = tqdm(total=total_ports, ncols=80, bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} ({rate_fmt})')
+
     # Create thread pool (increase threads for faster scan)
     for x in range(500):
-        t = threading.Thread(target=threader, args=(target,))
+        t = threading.Thread(target=threader, args=(target, progress_bar))
         t.daemon = True
         t.start()
 
     print(f"Scanning all HTTP ports ({args.start_port}-{args.end_port}) on {target}...")
-    for worker in tqdm(range(args.start_port, args.end_port), desc="Scanning Ports", ncols=80, bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt}'):
+    for worker in range(args.start_port, args.end_port + 1):
         queue.put(worker)
 
     queue.join()
+    progress_bar.close()
 
     # Sort ports by their number to ensure correct order
     all_ports_status.sort(key=lambda x: x[0])
