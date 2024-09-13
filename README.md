@@ -34,7 +34,7 @@ This will scan all ports from 1 to 65535 on the domain `example.com` and tell yo
 
 ### **Scanning a specific range of ports**:
 ```bash
-python3 PortScanner.py cms1.bac.edu.my --start-port 8000 --end-port 9000
+python3 PortScanner.py example.com --start-port 8000 --end-port 9000
 ```
 This scans ports 8000 to 9000 on the domain `example.com` and shows the results.
 
