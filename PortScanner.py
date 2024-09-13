@@ -1,5 +1,6 @@
 import requests
 import threading
+import socket  # Import socket module
 from queue import Queue
 from tqdm import tqdm
 import argparse
