@@ -14,7 +14,6 @@ init(autoreset=True)
 print_lock = threading.Lock()
 queue = Queue()
 valid_endpoints = []
-all_ports_status = []
 
 # Function to check the HTTP response on a given port
 def portscan(port, target):
@@ -26,15 +25,10 @@ def portscan(port, target):
             with print_lock:
                 valid_endpoints.append((port, url))
                 print(f"{Fore.GREEN}[200 OK] Found: {url}")
-        else:
-            with print_lock:
-                all_ports_status.append((port, f"{Fore.YELLOW}[{response.status_code}] {url}"))
     except requests.ConnectionError:
-        with print_lock:
-            all_ports_status.append((port, f"{Fore.RED}Port {port} not open: {url}"))
-    except Exception as e:
-        with print_lock:
-            all_ports_status.append((port, f"{Fore.RED}Error accessing port {port}: {url}, {e}"))
+        pass  # We silently ignore connection errors (no need to print them)
+    except Exception:
+        pass  # Ignore all other exceptions (e.g., timeouts)
 
 # Thread function
 def threader(target):
@@ -43,7 +37,7 @@ def threader(target):
         portscan(worker, target)
         queue.task_done()
 
-# Function to show the summary of the scan
+# Function to show the summary of open ports (200 OK)
 def show_summary():
     if valid_endpoints:
         print("\nValid HTTP Endpoints (200 OK):")
@@ -51,10 +45,6 @@ def show_summary():
             print(f"[200 OK] {endpoint}")
     else:
         print("\nNo valid HTTP endpoints found.")
-
-    print("\nPort Scan Results:")
-    for port, status in all_ports_status:
-        print(status)
 
 # Signal handler to display the summary when Ctrl+C is pressed
 def signal_handler(sig, frame):
@@ -91,13 +81,17 @@ def main():
 
     # Customize progress bar to show the current port being checked along with the range
     total_ports = args.end_port - args.start_port + 1
-    for worker in tqdm(range(args.start_port, args.end_port + 1), 
-                       desc=f"Scanning ports {args.start_port}-{args.end_port}", 
-                       ncols=80, 
-                       bar_format=f'Scanning Port {{n_fmt}}/({args.start_port}-{args.end_port}) | {{percentage:3.0f}}%'):
+    progress_bar = tqdm(total=total_ports, 
+                        desc=f"Scanning ports {args.start_port}-{args.end_port}", 
+                        ncols=80, 
+                        bar_format=f'Scanning Port {{n_fmt}}/({args.start_port}-{args.end_port}) | {{percentage:3.0f}}%')
+
+    for worker in range(args.start_port, args.end_port + 1):
         queue.put(worker)
+        progress_bar.update(1)  # Update the progress bar with each port checked
 
     queue.join()
+    progress_bar.close()
 
     # Show summary when scan is done
     show_summary()
