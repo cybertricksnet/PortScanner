@@ -13,12 +13,14 @@ open_ports = []
 def portscan(port, target):
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect((target, port))
-        with print_lock:
-            open_ports.append(port)
+        sock.settimeout(1)  # Timeout of 1 second for each port
+        result = sock.connect_ex((target, port))  # Use connect_ex to avoid crashing
+        if result == 0:
+            with print_lock:
+                open_ports.append(port)
         sock.close()
-    except:
-        pass
+    except Exception as e:
+        pass  # We ignore all exceptions, but they can be logged for debugging
 
 # Thread function
 def threader(target):
