@@ -22,16 +22,16 @@ def portscan(port, target):
         if response.status_code == 200:
             with print_lock:
                 valid_endpoints.append((port, url))
-                print(f"{Fore.GREEN}[200 OK] Found: {url}")
+                print(f"{Fore.CYAN}[200 OK] Found: {url}")
         else:
             with print_lock:
-                print(f"Port {port} not open: {url}")
+                print(f"{Fore.RED}Port {port} not open: {url}")
     except requests.ConnectionError:
         with print_lock:
-            print(f"Port {port} not open: {url}")
+            print(f"{Fore.RED}Port {port} not open: {url}")
     except Exception:
         with print_lock:
-            print(f"Port {port} not open: {url}")
+            print(f"{Fore.RED}Port {port} not open: {url}")
 
 def threader(target):
     while True:
@@ -43,9 +43,9 @@ def show_summary():
     if valid_endpoints:
         print("\nValid HTTP Endpoints (200 OK):")
         for port, endpoint in valid_endpoints:
-            print(f"[200 OK] {endpoint}")
+            print(f"{Fore.CYAN}[200 OK] {endpoint}")
     else:
-        print("\nNo valid HTTP endpoints found.")
+        print(f"{Fore.RED}\nNo valid HTTP endpoints found.")
 
 def signal_handler(sig, frame):
     print("\n\n[!] Scan interrupted by user.")
