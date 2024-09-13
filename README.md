@@ -73,7 +73,7 @@ Valid HTTP Endpoints (200 OK):
 - **Clear results**: It shows which ports are open or closed as it scans.
 - **Graceful stop**: When you stop the scan, it will still show the open ports.
 
-### Notes
+## Notes
 
 - You can adjust the range of ports depending on what you need.
 - The tool is simple and useful for checking if certain web ports are open.
