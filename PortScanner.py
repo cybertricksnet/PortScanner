@@ -3,6 +3,9 @@ import threading
 from queue import Queue
 from tqdm import tqdm
 import argparse
+from colorama import Fore, Style, init
+
+init(autoreset=True)  # To reset colors after each print
 
 # Global variables
 print_lock = threading.Lock()
@@ -14,11 +17,22 @@ def portscan(port, target):
     try:
         url = f"http://{target}:{port}"
         response = requests.get(url, timeout=2)  # Timeout of 2 seconds for each request
-        if response.status_code == 200:
-            with print_lock:
+        
+        # Logging for each response, even if it's not 200 OK
+        with print_lock:
+            if response.status_code == 200:
                 valid_endpoints.append(url)
-    except Exception:
-        pass  # Ignore any errors (e.g., connection refused, timeout)
+                print(f"{Fore.GREEN}[200 OK] Found: {url}")
+            else:
+                print(f"{Fore.YELLOW}[{response.status_code}] {url}")
+    except requests.ConnectionError:
+        # If the connection is refused or times out, log it (silently or explicitly)
+        with print_lock:
+            print(f"{Fore.RED}Connection failed: {url}")
+    except Exception as e:
+        # Catch all other errors (including timeouts)
+        with print_lock:
+            print(f"{Fore.RED}Error accessing {url}: {e}")
 
 # Thread function
 def threader(target):
@@ -29,7 +43,7 @@ def threader(target):
 
 # Main function to initialize the scanner
 def main():
-    parser = argparse.ArgumentParser(description="HTTP-based port scanner")
+    parser = argparse.ArgumentParser(description="HTTP-based port scanner with logging")
     parser.add_argument("target", help="Target IP address or domain to scan (e.g., 'example.com' or '127.0.0.1')")
     args = parser.parse_args()
 
