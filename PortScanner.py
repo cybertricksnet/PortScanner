@@ -87,7 +87,7 @@ def main():
         t.daemon = True
         t.start()
 
-    print(f"Scanning HTTP ports ({args.start-port}-{args.end-port}) on {target}...")
+    print(f"Scanning HTTP ports ({args.start_port}-{args.end_port}) on {target}...")
 
     # Customize progress bar to show the current port being checked along with the range
     total_ports = args.end_port - args.start_port + 1
