@@ -1,37 +1,59 @@
 import socket
 import threading
 from queue import Queue
+from tqdm import tqdm
+import argparse
 
+# Global variables
 print_lock = threading.Lock()
-target = "127.0.0.1"
 queue = Queue()
 open_ports = []
 
-def portscan(port):
+# Function to scan a single port
+def portscan(port, target):
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((target, port))
         with print_lock:
-            print(f"Port {port} is open")
             open_ports.append(port)
         sock.close()
     except:
         pass
 
-def threader():
+# Thread function
+def threader(target):
     while True:
         worker = queue.get()
-        portscan(worker)
+        portscan(worker, target)
         queue.task_done()
 
-for x in range(100):
-    t = threading.Thread(target=threader)
-    t.daemon = True
-    t.start()
+# Main function to initialize the scanner
+def main():
+    parser = argparse.ArgumentParser(description="Simple port scanner using multithreading")
+    parser.add_argument("target", help="Target IP address or domain to scan (e.g., 'example.com' or '127.0.0.1')")
+    args = parser.parse_args()
 
-for worker in range(1, 65535):
-    queue.put(worker)
+    target = socket.gethostbyname(args.target)  # Resolve the domain to an IP address
 
-queue.join()
+    # Create thread pool
+    for x in range(100):
+        t = threading.Thread(target=threader, args=(target,))
+        t.daemon = True
+        t.start()
 
-print("Open ports:", open_ports)
+    # Define the range of ports to scan
+    for worker in tqdm(range(1, 65535), desc="Scanning Ports", ncols=80, bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt}'):
+        queue.put(worker)
+
+    queue.join()
+
+    # Display open ports
+    if open_ports:
+        print("\nOpen ports:")
+        for port in open_ports:
+            print(f"Port {port} is open")
+    else:
+        print("\nNo open ports found.")
+
+if __name__ == "__main__":
+    main()
